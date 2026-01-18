@@ -10,6 +10,20 @@ amex/
 │   │   ├── 2025-06.csv
 │   │   └── ...
 │   └── 2026/
+├── nubank/                  # Nubank account data
+│   ├── source_pdfs/         # Original PDF statements (drop zone)
+│   │   ├── credit/          # Credit card (Tarjeta) PDFs
+│   │   └── debit/           # Debit account (Cuenta Nu) PDFs
+│   └── statements/          # Converted CSV statements
+│       ├── credit/
+│       │   └── 2025/
+│       │       ├── 2025-10.csv
+│       │       ├── 2025-11.csv
+│       │       └── 2025-12.csv
+│       └── debit/
+│           └── 2025/
+│               ├── 2025-11.csv
+│               └── 2025-12.csv
 ├── trips/                   # Trip expense summaries
 │   ├── 2025/
 │   │   ├── argentina_oct-nov.csv
@@ -71,6 +85,66 @@ If the user mentions a trip, or if charges match known trip patterns:
 ### Step 4: Currency Conversion
 - If USD amount is missing, calculate using current MXN/USD exchange rate
 - Note: Amex CSVs sometimes include USD in format like `"1,150.04 USD"` or as separate column
+
+### Step 5: Add Roam Reminder for Next Month
+After processing a monthly statement, add a todo item to Roam Research for the first Saturday of the following month to remind the user to add the next Amex and Nubank statements.
+
+Example: After processing January 2026 statements, add a Roam todo for the first Saturday in February: "Add Amex and Nubank statements for February 2026"
+
+---
+
+## Processing Nubank PDF Statements
+
+When new Nubank PDFs are dropped into `nubank/source_pdfs/`, follow these steps:
+
+### Step 1: Classify PDF Type
+
+Read each PDF and identify the account type:
+
+| Type | Identifiers | Period |
+|------|-------------|--------|
+| **Credit (Tarjeta)** | "TARJETA:", "Límite de crédito", "Saldo total del periodo" | 22nd to 22nd (e.g., "22 SEP 2025 - 22 OCT 2025") |
+| **Debit (Cuenta Nu)** | "Cuenta Nu:", "CLABE:", "Saldo inicial" | 1st to end of month (e.g., "01 al 30 nov 2025") |
+
+### Step 2: Move PDF to Correct Folder
+
+- Credit card PDFs → `nubank/source_pdfs/credit/`
+- Debit account PDFs → `nubank/source_pdfs/debit/`
+
+### Step 3: Extract Transactions
+
+Parse the "TRANSACCIONES" or "Detalle de movimientos" section. Skip:
+- Payments ("Pago a tu tarjeta de crédito")
+- Internal adjustments ("Ajuste", "Abono por plan de pagos fijos")
+- Fees/interest (unless tracking separately)
+- "Límite convertido en saldo" (credit-to-debit internal transfer)
+
+### Step 4: Create CSV
+
+Save to `nubank/statements/{credit|debit}/YYYY/YYYY-MM.csv` using the statement's closing month.
+
+**CSV Schema** (same as Amex-derived files):
+```
+Date,Description,Category,Amount_MXN,Amount_USD,Source_File,Status
+```
+
+**Categories from Nubank PDFs:**
+- Restaurante, Hogar, Otros, Electrónicos, Supermercado, Ocio, Transportation, Transfer, ATM
+
+**Notes:**
+- Add "(Argentina)" suffix for ARS transactions during trips
+- "Of" entries are likely OnlyFans subscriptions (category: Otros)
+- Include USD amount when foreign currency conversion is shown
+
+### Step 5: Add Roam Reminder for Next Month
+Same as Amex processing - add a todo to Roam Research for the first Saturday of the following month.
+
+### Nubank Statement Naming
+
+| PDF Title | Account | Period | CSV Name |
+|-----------|---------|--------|----------|
+| "estado de cuenta de octubre" | Credit | 22 Sep - 22 Oct | 2025-10.csv |
+| "estado de cuenta de Noviembre" | Debit | 01-30 Nov | 2025-11.csv |
 
 ---
 
@@ -158,9 +232,9 @@ NEW YORK|NYC|MANHATTAN|BROOKLYN|QUEENS
 | Trip | Dates | File | Total (MXN) | Total (USD) | Notes |
 |------|-------|------|-------------|-------------|-------|
 | Yucatan | Jul 2025 | `trips/2025/yucatan_jul.csv` | ~14,944 | ~840 | Short trip; dates TBD |
-| Argentina | Oct 26 - Nov 22, 2025 | `trips/2025/argentina_oct-nov.csv` | ~274,000 | ~15,400 | Complete |
+| Argentina | Oct 26 - Nov 22, 2025 | `trips/2025/argentina_oct-nov.csv` | ~285,600 | ~16,050 | Complete (Amex + Nubank) |
 | Merida | Dec 14-21, 2025 | `trips/2025/merida_dec.csv` | ~27,645 | ~1,553 | Complete |
-| NYC | Dec 27, 2025 - Jan 1, 2026 | `trips/2025/nyc_dec27-jan1.csv` | ~116,100 | ~6,216 | Pre-trip bookings only; in-trip expenses in 2026-01.csv |
+| NYC | Dec 27, 2025 - Jan 1, 2026 | `trips/2025/nyc_dec27-jan1.csv` | ~125,119 | ~6,720 | Pre-trip + ATM; more in-trip expenses expected in 2026-01.csv |
 
 ---
 

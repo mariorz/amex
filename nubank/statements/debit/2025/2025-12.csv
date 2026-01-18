@@ -1,0 +1,3 @@
+Date,Description,Category,Amount_MXN,Amount_USD,Source_File,Status
+2025-12-11,SPEI Transfer to Banregio,Transfer,5000.00,,nubank-debit-2025-12.pdf,
+2025-12-28,ATM Withdrawal Citibanamex (NYC),ATM,9014.76,503.50,nubank-debit-2025-12.pdf,
