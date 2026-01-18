@@ -1,0 +1,6 @@
+Date,Description,Category,Amount_MXN,Amount_USD,Source_File,Account_Type,Status
+2025-11-07,Transfer to Luci,Transfer:Luci,2800.00,,banregio-2025-11.pdf,debit,
+2025-11-14,Transfer to Luci,Transfer:Luci,2800.00,,banregio-2025-11.pdf,debit,
+2025-11-18,Transfer to Luci,Transfer:Luci,11600.00,,banregio-2025-11.pdf,debit,
+2025-11-18,Mortgage Payment,Housing:Mortgage,33960.41,,banregio-2025-11.pdf,debit,
+2025-11-21,Transfer to Luci,Transfer:Luci,2800.00,,banregio-2025-11.pdf,debit,

@@ -3,28 +3,35 @@
 ## File Structure
 
 ```
-amex/
-├── statements/              # Canonical monthly Amex statements (source data)
+inbox/                       # Drop zone for new files to process
+statements/
+├── amex/                    # Canonical monthly Amex statements (source data)
 │   ├── 2025/
 │   │   ├── 2025-05.csv
 │   │   ├── 2025-06.csv
 │   │   └── ...
 │   └── 2026/
+├── banregio/                # Banregio checking account (debit)
+│   └── 2025/
+│       ├── 2025-01.csv      # All months complete (Jan-Dec)
+│       └── ...
 ├── nubank/                  # Nubank account data
 │   ├── source_pdfs/         # Original PDF statements (drop zone)
 │   │   ├── credit/          # Credit card (Tarjeta) PDFs
 │   │   └── debit/           # Debit account (Cuenta Nu) PDFs
-│   └── statements/          # Converted CSV statements
-│       ├── credit/
-│       │   └── 2025/
-│       │       ├── 2025-10.csv
-│       │       ├── 2025-11.csv
-│       │       └── 2025-12.csv
-│       └── debit/
-│           └── 2025/
-│               ├── 2025-11.csv
-│               └── 2025-12.csv
-├── trips/                   # Trip expense summaries
+│   └── credit/              # Converted CSV statements
+│   │   └── 2025/
+│   │       ├── 2025-10.csv
+│   │       ├── 2025-11.csv
+│   │       └── 2025-12.csv
+│   └── debit/
+│       └── 2025/
+│           ├── 2025-11.csv
+│           └── 2025-12.csv
+consolidated/                # Combined expenses from all sources
+│   ├── 2025.csv             # All 2025 expenses in unified schema
+│   └── 2026.csv
+trips/                       # Trip expense summaries
 │   ├── 2025/
 │   │   ├── argentina_oct-nov.csv
 │   │   ├── merida_dec.csv
@@ -69,6 +76,7 @@ Date,Description,Category,Amount_MXN,Amount_USD,Source_File,Account_Type,Status
 | `YYYY-MM.csv` (Amex) | credit |
 | `nubank-credit-*.csv` | credit |
 | `nubank-debit-*.csv` | debit |
+| `banregio-*.pdf` | debit |
 
 ### Transactions to Exclude from Expense Totals
 
@@ -84,6 +92,82 @@ The following transaction types are **NOT expenses** and should be excluded when
 1. **Never sum Transfer transactions** into expense totals - they inflate spending numbers
 2. **ATM withdrawals** represent a tracking gap: the cash was spent somewhere but those purchases aren't recorded. Note ATM amounts separately as "untracked cash spending"
 3. When comparing credit vs debit spending, remember credit is a liability until paid
+
+---
+
+## Processing the Inbox
+
+The `inbox/` directory is the drop zone for new files. When the user adds files here and asks to process them, follow this workflow.
+
+### Step 1: List Inbox Contents
+
+```bash
+ls -la inbox/
+```
+
+### Step 2: Identify File Types and Route Accordingly
+
+| File Type | Identification | Action |
+|-----------|----------------|--------|
+| **ZIP** | `.zip` extension | Extract to temp dir, then process contents |
+| **Banregio PDF** | `MARIO ROMERO ZAVALA` or `85020113` in filename | Process per "Processing Banregio PDF Statements" section |
+| **Nubank PDF** | `estado de cuenta` or Nubank identifiers | Process per "Processing Nubank PDF Statements" section |
+| **Amex CSV** | Contains `Fecha,Descripción,Importe` header | Move to `statements/amex/{year}/YYYY-MM.csv` |
+| **Nubank CSV** | Contains unified schema + `nubank` in name | Move to `statements/nubank/{credit\|debit}/{year}/` |
+
+### Step 3: Process Each File
+
+**For ZIPs:**
+```bash
+unzip inbox/filename.zip -d /tmp/inbox_extract/
+```
+Then process each extracted file according to its type.
+
+**For Banregio PDFs:**
+1. Read page 1 to determine statement month
+2. Extract Transfer:Karen, Transfer:Luci, Housing:Mortgage
+3. Create CSV in `statements/banregio/{year}/YYYY-MM.csv`
+4. Move PDF to `statements/banregio/source_pdfs/banregio-YYYY-MM.pdf`
+
+**For Nubank PDFs:**
+1. Classify as credit or debit (see Nubank section)
+2. Extract transactions
+3. Create CSV in `statements/nubank/{credit|debit}/{year}/YYYY-MM.csv`
+4. Move PDF to `statements/nubank/source_pdfs/{credit|debit}/`
+
+**For Amex CSVs:**
+1. Check header row for `Fecha` to confirm format
+2. Determine month from transactions (most common month in file)
+3. Move to `statements/amex/{year}/YYYY-MM.csv`
+
+### Step 4: Clean Up
+
+After processing each file:
+1. Delete from inbox (or move to source_pdfs for PDFs)
+2. Regenerate consolidated file if statements were added
+3. Report what was processed
+
+### Example Inbox Processing Session
+
+```
+User: process inbox
+
+Agent:
+1. Found: banregio-statement.pdf, nubank-nov.pdf, 2025-12.csv
+2. Processing banregio-statement.pdf...
+   - Identified as December 2025
+   - Created statements/banregio/2025/2025-12.csv
+   - Moved PDF to statements/banregio/source_pdfs/banregio-2025-12.pdf
+3. Processing nubank-nov.pdf...
+   - Identified as Credit, November 2025
+   - Created statements/nubank/credit/2025/2025-11.csv
+   - Moved PDF to statements/nubank/source_pdfs/credit/
+4. Processing 2025-12.csv...
+   - Identified as Amex, December 2025
+   - Moved to statements/amex/2025/2025-12.csv
+5. Regenerating consolidated/2025.csv...
+6. Done. Inbox is empty.
+```
 
 ---
 
@@ -114,6 +198,150 @@ If the user mentions a trip, or if charges match known trip patterns:
 After processing a monthly statement, add a todo item to Roam Research for the first Saturday of the following month to remind the user to add the next Amex and Nubank statements.
 
 Example: After processing January 2026 statements, add a Roam todo for the first Saturday in February: "Add Amex and Nubank statements for February 2026"
+
+### Step 6: Regenerate Consolidated File
+After processing any new statements, regenerate the consolidated expenses file for that year (see "Generating Consolidated Expenses" section below).
+
+---
+
+## Generating Consolidated Expenses
+
+The `consolidated/{year}.csv` file combines ALL expenses from all sources into a single file with the unified schema. This is the master file for expense analysis.
+
+### Sources to Include
+
+| Source | Path | Format |
+|--------|------|--------|
+| Amex | `statements/amex/{year}/*.csv` | Raw (needs conversion) |
+| Nubank Credit | `statements/nubank/credit/{year}/*.csv` | Unified schema |
+| Nubank Debit | `statements/nubank/debit/{year}/*.csv` | Unified schema |
+| Banregio | `statements/banregio/{year}/*.csv` | Unified schema |
+
+### Amex Format Conversion
+
+Amex CSVs use Spanish column names and need conversion:
+
+| Amex Column | Unified Column |
+|-------------|----------------|
+| Fecha | Date (convert "22 Dec 2025" → "2025-12-22") |
+| Descripción | Description |
+| Importe | Amount_MXN |
+| Monto en moneda extranjera | Amount_USD (extract number from "250.00 USD") |
+| (derived) | Source_File = "{year}-{MM}.csv" |
+| (fixed) | Account_Type = "credit" |
+| (empty) | Category, Status |
+
+### Output Schema
+
+```
+Date,Description,Category,Amount_MXN,Amount_USD,Source_File,Account_Type,Status
+```
+
+### Generation Rules
+
+1. **Sort by Date** - All transactions sorted chronologically (oldest first)
+2. **Preserve Source_File** - Keep original source file reference for traceability
+3. **No Deduplication** - Same charge can appear in multiple sources (e.g., if manually added to trips); keep all
+4. **Include All Categories** - Including Transfer:Karen, Transfer:Luci, Housing:Mortgage from Banregio
+
+### When to Regenerate
+
+Regenerate the consolidated file when:
+- New monthly statements are added
+- Existing CSVs are corrected/updated
+- New source types are added
+
+---
+
+## Generating Monthly Spend Reports
+
+Use the consolidated file to generate monthly spending summaries.
+
+### Expense Categories
+
+| Category | Includes | Type |
+|----------|----------|------|
+| **Personal** | All spending + Mortgage + Transfers (Karen/Luci) + ATM | Personal |
+| **Work** | Anthropic, OpenAI, Claude.AI, AWS, Google Cloud, GitHub, Discord, Bankless, Ankr | Reimbursable |
+
+### Work Expense Patterns
+
+Search for these patterns to identify work expenses:
+```
+ANTHROPIC, OPENAI, CHATGPT, CLAUDE.AI, CLAUDE AI,
+AWS EMEA, AWS , AMAZON WEB SERVICES,
+GOOGLE CLOUD, PAYU-GOOGLE,
+ANKR, BANKLESS, GITHUB, DISCORD
+```
+
+### Transactions to EXCLUDE from Totals
+
+- **Credit card payments**: "GRACIAS POR SU PAGO" (these are payments TO the card, not spending)
+- **Negative amounts**: Refunds should offset purchases, but large refunds may need review
+
+### Monthly Report Format
+
+```
+Month        Personal         Work
+--------------------------------------
+2025-01      XXX,XXX.XX   XXX,XXX.XX
+2025-02      XXX,XXX.XX   XXX,XXX.XX
+...
+--------------------------------------
+TOTAL      X,XXX,XXX.XX   XXX,XXX.XX
+```
+
+### Personal Spending Components
+
+Personal spending includes ALL of these (do not separate):
+- **Regular spending**: Credit card purchases, debit purchases
+- **Housing:Mortgage**: Monthly mortgage payments from Banregio
+- **Transfer:Karen**: Household staff payments
+- **Transfer:Luci**: Household staff payments
+- **ATM**: Cash withdrawals (represents untracked cash spending)
+
+### Sample Python Script
+
+```python
+import csv
+from collections import defaultdict
+
+work_patterns = [
+    'ANTHROPIC', 'OPENAI', 'CHATGPT', 'CLAUDE.AI', 'CLAUDE AI',
+    'AWS EMEA', 'AWS ', 'AMAZON WEB SERVICES',
+    'GOOGLE CLOUD', 'PAYU-GOOGLE', 'ANKR', 'BANKLESS', 'GITHUB', 'DISCORD'
+]
+
+def is_work_expense(desc):
+    return any(p in desc.upper() for p in work_patterns)
+
+personal_by_month = defaultdict(float)
+work_by_month = defaultdict(float)
+
+with open('consolidated/2025.csv', 'r') as f:
+    reader = csv.DictReader(f)
+    for row in reader:
+        date, desc = row['Date'], row['Description']
+        if not date or len(date) < 7:
+            continue
+        month = date[:7]
+
+        amount = float(row['Amount_MXN'].replace(',', '') or 0)
+
+        # Skip credit card payments
+        if 'GRACIAS POR SU PAGO' in desc.upper():
+            continue
+
+        # Categorize
+        if is_work_expense(desc) and amount > 0:
+            work_by_month[month] += amount
+        else:
+            personal_by_month[month] += amount
+
+# Print report
+for month in sorted(personal_by_month.keys()):
+    print(f"{month}  {personal_by_month[month]:>12,.2f}  {work_by_month[month]:>12,.2f}")
+```
 
 ---
 
@@ -324,6 +552,110 @@ The `explorer.html` file implements these principles:
 - High data-ink ratio with minimal decoration
 - Tabular data for detailed exploration
 - Monochrome palette with functional color only (red for watchlist alerts)
+
+---
+
+## Processing Banregio PDF Statements
+
+Banregio statements are monthly "ESTADO DE CUENTA UNICO" PDFs containing checking account transactions and mortgage information.
+
+### Step 1: Identify Statement Month
+
+The statement period is shown on page 1:
+- "del 01 al 31 de DICIEMBRE 2025" → December 2025
+- "del 01 al 30 de NOVIEMBRE 2025" → November 2025
+
+### Step 2: Extract Relevant Transactions
+
+Only extract these three categories:
+
+| Category | How to Identify | Search Pattern |
+|----------|-----------------|----------------|
+| **Transfer:Karen** | BBVA MEXICO + account 012180015490204623 | `BBVA MEXICO.*012180015490204623` |
+| **Transfer:Luci** | AZTECA + account 5263540114400399 | `AZTECA.*5263540114400399` |
+| **Housing:Mortgage** | "Monto Pago Actual" on mortgage summary page | Look on pages 5-7 for mortgage section |
+
+### Step 3: Transactions to EXCLUDE
+
+Skip these when processing (they are not household expenses):
+- **Nubank transfers** - `NU MEXICO` or `nubank` in description
+- **AMEX payments** - `AMERICAN EXPRESS` in description
+- **PAGO REFERENCIADO SA** - Service payments (already tracked elsewhere)
+- **DLOCAL / STP deposits** - Income, not expenses
+- **Commissions/IVA** - Bank fees (COM. SPEI, IVA SPEI)
+
+### Step 4: Find Mortgage Amount
+
+The mortgage payment is on the mortgage summary page (usually pages 5-7):
+- Look for "HIPOTECA VERTICAL" section
+- Find "Monto Pago Actual" row → this is the total mortgage payment
+- The payment date is typically the 18th-20th of the month
+
+### Step 5: Create CSV
+
+Save to `statements/banregio/YYYY/YYYY-MM.csv`
+
+**CSV Schema:**
+```
+Date,Description,Category,Amount_MXN,Amount_USD,Source_File,Account_Type,Status
+```
+
+- Set `Account_Type` to `debit` (Banregio is a checking account)
+- Leave `Amount_USD` empty
+- `Source_File` = `banregio-YYYY-MM.pdf`
+
+### Example Extraction
+
+From December 2025 PDF:
+```
+2025-12-18,Transfer to Karen,Transfer:Karen,8000.00,,banregio-2025-12.pdf,debit,
+2025-12-18,Mortgage Payment,Housing:Mortgage,34842.03,,banregio-2025-12.pdf,debit,
+2025-12-26,Transfer to Luci,Transfer:Luci,2800.00,,banregio-2025-12.pdf,debit,
+```
+
+### Banregio Processing Status (2025)
+
+| Month | Status | Notes |
+|-------|--------|-------|
+| Jan-Dec | ✓ Done | All 12 months complete |
+
+### Banregio PDF Processing Queue
+
+PDFs are extracted to `/tmp/banregio_all/` in numbered folders (0-11). The folder numbers do NOT correspond to months - you must read page 1 of each PDF to determine the month.
+
+**Workflow (one PDF per session):**
+
+1. **Get next folder:**
+   ```bash
+   ls /tmp/banregio_all/ | head -1
+   ```
+
+2. **Find PDF in that folder:**
+   ```bash
+   ls /tmp/banregio_all/{folder}/*.pdf
+   ```
+
+3. **Read ONLY page 1** to get the statement month:
+   - Look for "del 01 al XX de {MONTH} {YEAR}"
+
+4. **Check if CSV exists:**
+   - If `statements/banregio/2025/2025-{MM}.csv` exists → skip to step 6
+   - If not → process the full PDF (step 5)
+
+5. **Process PDF:**
+   - Extract Karen transfers (BBVA MEXICO + 012180015490204623)
+   - Extract Luci transfers (AZTECA + 5263540114400399)
+   - Extract mortgage payment ("Monto Pago Actual" on pages 5-7)
+   - Create CSV in `statements/banregio/2025/`
+
+6. **Delete the processed folder:**
+   ```bash
+   rm -rf /tmp/banregio_all/{folder}
+   ```
+
+7. **Compact conversation** - this is critical to avoid context overflow
+
+**Repeat until `/tmp/banregio_all/` is empty.**
 
 ---
 
