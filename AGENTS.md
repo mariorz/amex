@@ -84,14 +84,14 @@ The following transaction types are **NOT expenses** and should be excluded when
 
 | Category | Examples | Reason |
 |----------|----------|--------|
-| Transfer | SPEI transfers, internal account moves | Moving money between accounts, not spending |
-| Credit card payments | "Pago a tu tarjeta de crédito" | Paying off credit liability, not new spending |
-| ATM (informational) | ATM withdrawals | The withdrawal is tracked, but cash usage is untracked |
+| Internal transfers | Nubank-to-Nubank moves, "Límite convertido en saldo" | Moving money between own accounts |
+| Credit card payments | "GRACIAS POR SU PAGO", "Pago a tu tarjeta de crédito" | Paying off credit liability, not new spending |
 
-**Key Rules:**
-1. **Never sum Transfer transactions** into expense totals - they inflate spending numbers
-2. **ATM withdrawals** represent a tracking gap: the cash was spent somewhere but those purchases aren't recorded. Note ATM amounts separately as "untracked cash spending"
-3. When comparing credit vs debit spending, remember credit is a liability until paid
+**What IS included as Personal expenses:**
+- **Transfer:Karen** - Reimbursements to partner for shared costs she paid
+- **Transfer:Luci** - Household staff payments
+- **Housing:Mortgage** - Monthly mortgage payments
+- **ATM withdrawals** - Cash spending (even if individual purchases untracked)
 
 ---
 
@@ -291,12 +291,31 @@ Month        Personal         Work
 TOTAL      X,XXX,XXX.XX   XXX,XXX.XX
 ```
 
+### 2025 Monthly Breakdown (MXN)
+
+| Month | Personal    | Work       | Total       |
+|-------|-------------|------------|-------------|
+| Jan   | 233,263     | 1,286      | 234,549     |
+| Feb   | 232,133     | 6,012      | 238,145     |
+| Mar   | 186,926     | 6,187      | 193,113     |
+| Apr   | 311,004     | 8,637      | 319,641     |
+| May   | 177,553     | 12,750     | 190,302     |
+| Jun   | 151,760     | 126,253    | 278,013     |
+| Jul   | 250,062     | 14,100     | 264,162     |
+| Aug   | 188,354     | 166,532    | 354,886     |
+| Sep   | 236,083     | 18,807     | 254,890     |
+| Oct   | 370,198     | 8,775      | 378,972     |
+| Nov   | 278,189     | 150,676    | 428,865     |
+| Dec   | 313,799     | 8,367      | 322,167     |
+|-------|-------------|------------|-------------|
+| **Total** | **2,929,324** | **528,382** | **3,457,705** |
+
 ### Personal Spending Components
 
 Personal spending includes ALL of these (do not separate):
 - **Regular spending**: Credit card purchases, debit purchases
 - **Housing:Mortgage**: Monthly mortgage payments from Banregio
-- **Transfer:Karen**: Household staff payments
+- **Transfer:Karen**: Reimbursements to partner for shared costs
 - **Transfer:Luci**: Household staff payments
 - **ATM**: Cash withdrawals (represents untracked cash spending)
 
