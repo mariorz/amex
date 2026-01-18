@@ -48,7 +48,7 @@ amex/
 Both `work_expenses/{year}.csv` and `trips/{year}/*.csv` use this unified schema:
 
 ```
-Date,Description,Category,Amount_MXN,Amount_USD,Source_File,Status
+Date,Description,Category,Amount_MXN,Amount_USD,Source_File,Account_Type,Status
 ```
 
 | Column | Description |
@@ -59,7 +59,31 @@ Date,Description,Category,Amount_MXN,Amount_USD,Source_File,Status
 | Amount_MXN | Amount in Mexican Pesos |
 | Amount_USD | Amount in US Dollars |
 | Source_File | Original monthly CSV filename for traceability |
+| Account_Type | `credit` (Amex, Nubank credit) or `debit` (Nubank debit) |
 | Status | REIMBURSED, blank, or other tracking status |
+
+### Account Type Determination
+
+| Source_File Pattern | Account_Type |
+|---------------------|--------------|
+| `YYYY-MM.csv` (Amex) | credit |
+| `nubank-credit-*.csv` | credit |
+| `nubank-debit-*.csv` | debit |
+
+### Transactions to Exclude from Expense Totals
+
+The following transaction types are **NOT expenses** and should be excluded when calculating spending totals:
+
+| Category | Examples | Reason |
+|----------|----------|--------|
+| Transfer | SPEI transfers, internal account moves | Moving money between accounts, not spending |
+| Credit card payments | "Pago a tu tarjeta de crédito" | Paying off credit liability, not new spending |
+| ATM (informational) | ATM withdrawals | The withdrawal is tracked, but cash usage is untracked |
+
+**Key Rules:**
+1. **Never sum Transfer transactions** into expense totals - they inflate spending numbers
+2. **ATM withdrawals** represent a tracking gap: the cash was spent somewhere but those purchases aren't recorded. Note ATM amounts separately as "untracked cash spending"
+3. When comparing credit vs debit spending, remember credit is a liability until paid
 
 ---
 
@@ -125,8 +149,10 @@ Save to `nubank/statements/{credit|debit}/YYYY/YYYY-MM.csv` using the statement'
 
 **CSV Schema** (same as Amex-derived files):
 ```
-Date,Description,Category,Amount_MXN,Amount_USD,Source_File,Status
+Date,Description,Category,Amount_MXN,Amount_USD,Source_File,Account_Type,Status
 ```
+
+Set `Account_Type` to `credit` for Tarjeta statements, `debit` for Cuenta Nu statements.
 
 **Categories from Nubank PDFs:**
 - Restaurante, Hogar, Otros, Electrónicos, Supermercado, Ocio, Transportation, Transfer, ATM

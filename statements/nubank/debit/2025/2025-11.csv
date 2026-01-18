@@ -1,3 +1,3 @@
-Date,Description,Category,Amount_MXN,Amount_USD,Source_File,Status
-2025-11-15,EMOVA SUBTE (Argentina),Transportation,15.48,,nubank-debit-2025-11.pdf,
-2025-11-15,EMOVA SUBTE (Argentina),Transportation,15.48,,nubank-debit-2025-11.pdf,
+Date,Description,Category,Amount_MXN,Amount_USD,Source_File,Account_Type,Status
+2025-11-15,EMOVA SUBTE (Argentina),Transportation,15.48,,nubank-debit-2025-11.pdf,debit,
+2025-11-15,EMOVA SUBTE (Argentina),Transportation,15.48,,nubank-debit-2025-11.pdf,debit,
