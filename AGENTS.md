@@ -430,6 +430,9 @@ Same as Amex processing - add a todo to Roam Research for the first Saturday of 
 - **Google Nest** - Personal smart home
 - **Whitepaper.mx** - Personal
 
+### Known Merchants (unclear names)
+- **WP100** - Wolf gym (Pachuca 100, Condesa) - Fitness membership
+
 ### Work Expenses (AI Services)
 - **Anthropic** - AI/LLM service
 - **OpenAI / CHATGPT SUBSCR** - AI/LLM service
